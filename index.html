@@ -1,0 +1,21 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>مصروفي Smart</title><link rel="stylesheet" href="css/style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
+<div class="app-bg"></div>
+<main id="authView" class="auth-card">
+  <h1>مصروفي Smart</h1><p>إدارة المرتب والمصاريف والديون والأهداف</p>
+  <input id="email" type="email" placeholder="الإيميل"><input id="password" type="password" placeholder="الباسورد">
+  <div class="row"><button id="loginBtn">دخول</button><button id="signupBtn" class="ghost">تسجيل جديد</button></div>
+  <p id="authMsg" class="msg"></p>
+</main>
+<section id="appView" class="hidden shell">
+  <aside class="side"><h2>مصروفي</h2><button data-tab="dashboard" class="active">الرئيسية</button><button data-tab="salary">المرتب</button><button data-tab="transactions">المعاملات</button><button data-tab="bills">الفواتير</button><button data-tab="debts">الديون</button><button data-tab="goals">الأهداف</button><button data-tab="smartbuy">هل أشتريها؟</button><button data-tab="chat">الشات</button><button id="logoutBtn" class="danger">خروج</button></aside>
+  <div class="content"><header><div><h1 id="pageTitle">الرئيسية</h1><p id="userLine"></p></div><button id="refreshBtn" class="ghost">تحديث</button></header><div id="toast"></div>
+    <section id="dashboard" class="tab active grid"></section>
+    <section id="salary" class="tab card"><h2>إعدادات المرتب</h2><label>المرتب الشهري</label><input id="salaryAmount" type="number" inputmode="decimal"><label>يوم بداية الشهر المالي</label><input id="salaryDay" type="number" min="1" max="28"><button id="saveSalaryBtn">حفظ المرتب</button></section>
+    <section id="transactions" class="tab card"><h2>إضافة معاملة</h2><div class="formgrid"><select id="txType"><option value="expense">مصروف</option><option value="income">دخل إضافي</option></select><input id="txAmount" type="number" placeholder="المبلغ"><input id="txTitle" placeholder="الوصف"><input id="txCategory" placeholder="التصنيف"><button id="addTxBtn">حفظ</button></div><div id="txList" class="list"></div></section>
+    <section id="bills" class="tab card"><h2>الفواتير</h2><div class="formgrid"><input id="billName" placeholder="اسم الفاتورة"><input id="billAmount" type="number" placeholder="المبلغ"><input id="billDue" type="date"><button id="addBillBtn">إضافة</button></div><div id="billList" class="list"></div></section>
+    <section id="debts" class="tab card"><h2>الديون</h2><div class="formgrid"><input id="debtName" placeholder="الاسم"><input id="debtAmount" type="number" placeholder="المبلغ"><select id="debtType"><option value="owe">عليّا</option><option value="owed">ليّا</option></select><button id="addDebtBtn">إضافة</button></div><div id="debtList" class="list"></div></section>
+    <section id="goals" class="tab card"><h2>الأهداف</h2><div class="formgrid"><input id="goalName" placeholder="اسم الهدف"><input id="goalTarget" type="number" placeholder="المبلغ المستهدف"><input id="goalSaved" type="number" placeholder="المدخر حاليًا"><button id="addGoalBtn">إضافة</button></div><div id="goalList" class="list"></div></section>
+    <section id="smartbuy" class="tab card"><h2>هل أقدر أشتريها؟</h2><div class="formgrid"><input id="buyName" placeholder="اسم الحاجة"><input id="buyPrice" type="number" placeholder="السعر"><button id="calcBuyBtn">احسب القرار</button></div><div id="buyResult" class="decision"></div></section>
+    <section id="chat" class="tab card"><h2>شات الملاحظات</h2><div id="chatList" class="chat"></div><div class="chatbar"><input id="chatInput" placeholder="اكتب ملاحظة أو رسالة"><button id="sendChatBtn">إرسال</button></div></section>
+  </div>
+</section><script src="js/config.js"></script><script src="js/app.js"></script></body></html>
