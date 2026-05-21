@@ -38,15 +38,7 @@ async function getSession(){
   if(!ensureConfig()) return null;
   const {data:{session}, error}=await window.sb.auth.getSession();
   if(error) console.warn('getSession:', error.message);
-  if(session) return session;
-  // fallback: Supabase sometimes needs an explicit refresh after hard refresh / mobile PWA resume
-  try{
-    const refreshed=await window.sb.auth.refreshSession();
-    return refreshed?.data?.session || null;
-  }catch(e){
-    console.warn('refreshSession:', e.message);
-    return null;
-  }
+  return session || null;
 }
 async function requireAuth(){ const session=await getSession(); if(!session){ location.href='index.html'; return null;} return session; }
 async function logout(){ if(!confirm('هل تريد تسجيل الخروج؟')) return; if(window.sb) await window.sb.auth.signOut(); location.href='index.html'; }
@@ -58,8 +50,8 @@ async function getHousehold(){
  // الطريقة الصارمة: دالة آمنة داخل Supabase تنشئ/ترجع البيت بدون مشاكل RLS
  try{
    const {data,error}=await window.sb.rpc('ensure_current_household');
-   if(!error && data && data.length){
-     const row=data[0];
+   if(!error && data){
+     const row = Array.isArray(data) ? data[0] : data;
      return {id:row.household_id, role:row.role||'owner', member_id:row.member_id||null, name:row.household_name||'بيتي', user:session.user};
    }
    if(error) console.warn('ensure_current_household RPC:', error.message);

@@ -18,7 +18,7 @@ window.sb = isSupabaseConfigured
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'pkce',
+        storage: window.localStorage,
         storageKey: 'masrofi-smart-auth'
       },
       global: { headers: { 'x-client-info': 'masrofi-smart-fixed' } }
