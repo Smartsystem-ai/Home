@@ -1,0 +1,27 @@
+<!doctype html><html lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>المستشار المالي الذكي</title><link rel="stylesheet" href="css/style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><script src="js/config.js"></script><script src="js/app.js"></script>
+<main class="container page">
+  <div class="page-head"><div><h1>المستشار المالي الذكي</h1><p class="muted">اعرض عليه فكرة، اسأله تشتري ولا لأ، ادخل جمعية ولا لأ، احوش ازاي، أو خليه يسألك الناقص ويرتب الخطة.</p></div><a class="btn secondary" href="dashboard.html">الرئيسية</a></div>
+  <section class="grid-2">
+    <div class="card top-line">
+      <h3>دردشة ذكية مبنية على بياناتك</h3>
+      <div id="chat" class="chat-pro"></div>
+      <div class="consult-row" style="margin-top:12px"><textarea id="voiceText" class="assistant-input" placeholder="مثال: عايز أشتري موبايل بـ 20000 خلال 5 شهور، احوش ازاي؟"></textarea><button id="micBtn" class="mic" onclick="toggleVoice()">🎙️</button></div>
+      <div class="actions"><button class="btn primary" onclick="askConsultant()">اسأل المستشار</button><button class="btn secondary" onclick="processText()">نفّذ كعملية</button><button class="btn" onclick="voiceText.value=''">مسح</button></div>
+      <div class="chips"><span class="chip" onclick="setExample('هل أقدر أشتري حاجة ب 5000 الشهر ده؟')">هل أقدر أشتريها؟</span><span class="chip" onclick="setExample('عايز اشتري موبايل ب 20000 خلال 5 شهور')">هدف شراء</span><span class="chip" onclick="setExample('ادخل جمعية 1000 في الشهر؟')">جمعية</span><span class="chip" onclick="setExample('رتبلي ديوني')">ديون</span><span class="chip" onclick="setExample('احوش ازاي بناء على مصاريفي')">تحويش</span><span class="chip" onclick="setExample('حلل مصاريفي واسألني الناقص')">تحليل</span></div>
+      <p id="voiceStatus" class="muted">الصوت يعمل على Chrome/Edge. اسمح للميكروفون.</p>
+    </div>
+    <div class="card top-line"><h3>ملخص القرار</h3><div id="result" class="result-box">اسأل المستشار أي سؤال مالي.</div><div id="healthBox" style="margin-top:16px"></div><div class="actions"><a class="btn secondary" href="goals.html">الأهداف</a><a class="btn secondary" href="whatif.html">ماذا لو؟</a><a class="btn secondary" href="debts.html">الديون</a></div></div>
+  </section>
+</main>
+<script>
+mountNav();let H,rec,isListening=false;load();
+function setExample(t){voiceText.value=t; voiceText.focus()}
+async function load(){H=await getHousehold(); await loadChat(); const h=await healthScore(H); healthBox.innerHTML=`<div class="health-ring" style="--p:${h.score}"><span>${h.score}</span></div><p class="muted" style="text-align:center">الصحة المالية: ${h.label}</p>`; const p=new URLSearchParams(location.search).get('ask'); if(p){voiceText.value=p; askConsultant();}}
+async function loadChat(){const {data}=await window.sb.from('ai_chats').select('*').eq('household_id',H.id).order('created_at',{ascending:true}).limit(100);chat.innerHTML=(data||[]).map(m=>`<div class="msg ${m.role}">${escapeHtml(m.message)}</div>`).join('') || '<div class="msg assistant">قولّي فكرتك أو سؤالك المالي، وأنا هحلله على بياناتك.</div>';chat.scrollTop=chat.scrollHeight}
+async function append(role,msg){chat.innerHTML+=`<div class="msg ${role}">${escapeHtml(msg)}</div>`; chat.scrollTop=chat.scrollHeight; await window.sb.from('ai_chats').insert({household_id:H.id,user_id:H.user.id,role,message:msg});}
+function setupRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return null; const r=new SR(); r.lang='ar-EG'; r.interimResults=true; r.continuous=false; r.onresult=(e)=>{let txt=''; for(let i=0;i<e.results.length;i++) txt+=e.results[i][0].transcript+' '; voiceText.value=txt.trim();}; r.onend=()=>{isListening=false; micBtn.classList.remove('listening'); voiceStatus.textContent='تم تحويل الصوت لكتابة.'}; r.onerror=(e)=>{isListening=false; micBtn.classList.remove('listening'); voiceStatus.textContent='مشكلة في الميكروفون: '+e.error}; return r;}
+function toggleVoice(){rec=rec||setupRecognition(); if(!rec){voiceStatus.textContent='المتصفح لا يدعم الصوت. استخدم Chrome أو Edge.';return} if(isListening){rec.stop();return} isListening=true; micBtn.classList.add('listening'); voiceStatus.textContent='بسمعك... اتكلم الآن'; rec.start();}
+function splitCommands(text){return text.split(/\s*(?: و |،|,| ثم )\s*/).map(x=>x.trim()).filter(Boolean)}
+async function askConsultant(){const text=voiceText.value.trim(); if(!text){result.textContent='اكتب سؤالك الأول.';return} await append('user',text); result.textContent='جاري التحليل...'; try{const answer=await consultantReply(H,text); result.textContent=answer; await append('assistant',answer); voiceText.value='';}catch(e){result.textContent='خطأ: '+e.message; await append('assistant','لم أستطع التحليل: '+e.message);}}
+async function processText(){const text=voiceText.value.trim(); if(!text){result.textContent='اكتب أو اتكلم الأول.';return} await append('user',text); result.textContent='جاري التنفيذ...'; try{let outputs=[]; for(const part of splitCommands(text)){const parsed=smartParse(part); const done=await saveSmartEntry(H,parsed); outputs.push(done)} const final=outputs.join('\n'); result.textContent=final; await append('assistant',final); voiceText.value='';}catch(e){result.textContent='خطأ: '+e.message; await append('assistant','لم أستطع تنفيذ الطلب: '+e.message);}}
+</script></body></html>

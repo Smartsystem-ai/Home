@@ -1,0 +1,81 @@
+<!doctype html><html lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الجمعية</title><link rel="stylesheet" href="css/style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><script src="js/config.js"></script><script src="js/app.js"></script>
+<main class="container page">
+  <div class="page-head"><div><h1>الجمعية</h1><p class="muted">اختار هل أنت مشترك في جمعية فقط، أو أنت مؤسس وتريد إدارة الأعضاء والمدفوعات الشهرية بشكل كامل.</p></div><a class="btn primary" href="ai.html">اسأل المساعد عن الجمعية</a></div>
+
+  <section class="card top-line">
+    <input id="id" type="hidden">
+    <div class="tabs" style="grid-template-columns:1fr 1fr;margin-top:0">
+      <button id="tab_subscriber" class="active" onclick="setMode('subscriber')">أنا مشترك</button>
+      <button id="tab_founder" onclick="setMode('founder')">أنا مؤسس الجمعية</button>
+    </div>
+    <input id="role_mode" type="hidden" value="subscriber">
+    <div class="row-3">
+      <div><label>اسم الجمعية</label><input id="name" placeholder="مثال: جمعية الشغل"></div>
+      <div><label>القسط الشهري للفرد</label><input id="monthly_amount" type="number" placeholder="1000"></div>
+      <div><label>عدد الأعضاء</label><input id="total_members" type="number" placeholder="12"></div>
+      <div><label>الدور الحالي</label><input id="current_turn" type="number" placeholder="1"></div>
+      <div><label>دوري رقم</label><input id="my_turn" type="number" placeholder="مثال 5"></div>
+      <div><label>تاريخ البداية</label><input id="start_date" type="date"></div>
+      <div><label>الحالة</label><select id="status"><option value="active">نشطة</option><option value="finished">منتهية</option></select></div>
+      <div style="grid-column:span 2"><label>ملاحظات</label><input id="note" placeholder="مين ماسك الجمعية / ميعاد الدفع / أي تفاصيل"></div>
+    </div>
+    <div id="founder_hint" class="result-box hidden" style="min-height:auto;margin-top:10px">بعد حفظ الجمعية كمؤسس، سيظهر زر <b>إدارة الجمعية</b> لإضافة الأسماء وتحديد مين دفع ومين لم يدفع.</div>
+    <div class="actions"><button class="btn primary" onclick="save()">حفظ الجمعية</button><button class="btn" onclick="resetForm()">جديد</button></div>
+  </section>
+
+  <section class="grid-2" style="margin-top:14px"><div class="card"><h3>ملخص الجمعية</h3><div id="summary" class="result-box">لا توجد بيانات.</div></div><div class="card"><h3>نصيحة المساعد</h3><div id="advice" class="result-box">الجمعية تعتبر التزام ثابت، لازم تتحسب قبل المصاريف اليومية.</div></div></section>
+
+  <section class="card" style="margin-top:14px"><h3>الجمعيات المسجلة</h3><table><thead><tr><th>الاسم</th><th>النوع</th><th>القسط</th><th>الأعضاء</th><th>الدور الحالي</th><th>دوري</th><th>الحالة</th><th>تحكم</th></tr></thead><tbody id="list"></tbody></table></section>
+
+  <section id="manager" class="card top-line hidden" style="margin-top:14px">
+    <div class="page-head" style="margin-top:0"><div><h2 id="manager_title">إدارة الجمعية</h2><p class="muted">أضف الأعضاء، حدد دور كل شخص، وسجل مدفوعات الشهر الحالي.</p></div><button class="btn" onclick="closeManager()">إغلاق الإدارة</button></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>إضافة / تعديل عضو</h3>
+        <input id="gm_id" type="hidden">
+        <div class="row-3">
+          <div><label>اسم الشخص</label><input id="gm_name" placeholder="مثال: أحمد"></div>
+          <div><label>رقم الدور</label><input id="gm_turn" type="number" placeholder="1"></div>
+          <div><label>رقم الهاتف اختياري</label><input id="gm_phone" placeholder="01..."></div>
+          <div style="grid-column:span 3"><label>ملاحظة</label><input id="gm_note" placeholder="ملاحظة عن العضو"></div>
+        </div>
+        <div class="actions"><button class="btn primary" onclick="saveMember()">حفظ العضو</button><button class="btn" onclick="resetMemberForm()">عضو جديد</button><button class="btn secondary" onclick="autoFillMembers()">توليد أسماء مؤقتة حسب العدد</button></div>
+      </div>
+      <div class="card">
+        <h3>شهر التحصيل</h3>
+        <div class="row-3">
+          <div><label>الشهر</label><input id="payment_month" type="month"></div>
+          <div><label>بحث عن عضو</label><input id="member_search" oninput="renderManager()" placeholder="ابحث بالاسم"></div>
+          <div><label>فلتر الدفع</label><select id="pay_filter" onchange="renderManager()"><option value="all">الكل</option><option value="paid">دفع</option><option value="unpaid">لم يدفع</option></select></div>
+        </div>
+        <div class="result-box" id="manager_summary" style="min-height:auto">اختر جمعية لإدارتها.</div>
+        <div class="actions"><button class="btn primary" onclick="markAllPaid()">تحديد الكل دفع</button><button class="btn" onclick="markAllUnpaid()">تحديد الكل لم يدفع</button></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>الأعضاء والمدفوعات</h3><table><thead><tr><th>العضو</th><th>الدور</th><th>حالة الشهر</th><th>تاريخ الدفع</th><th>تحكم</th></tr></thead><tbody id="members_list"></tbody></table></div>
+  </section>
+</main>
+<script>
+mountNav();let H,rows=[],mode='subscriber',selectedGam3eya=null,gmembers=[],payments=[];payment_month.value=monthKey();load();
+function setMode(m){mode=m;role_mode.value=m;tab_subscriber.classList.toggle('active',m==='subscriber');tab_founder.classList.toggle('active',m==='founder');founder_hint.classList.toggle('hidden',m!=='founder')}
+async function load(){H=await getHousehold();const {data,error}=await window.sb.from('gam3eyas').select('*').eq('household_id',H.id).order('created_at',{ascending:false}); if(error)return toast(error.message,'bad');rows=data||[];render()}
+function render(){const active=rows.filter(x=>x.status!=='finished');const monthly=active.reduce((a,b)=>a+num(b.monthly_amount),0);summary.textContent=`عدد الجمعيات النشطة: ${active.length}\nإجمالي الالتزام الشهري: ${fmt(monthly)}\n${active.map(x=>`${x.name}: ${x.role_mode==='founder'?'مؤسس':'مشترك'} - الدور ${x.current_turn||1}/${x.total_members||0} - دورك ${x.my_turn||'غير محدد'}`).join('\n')||'لا توجد جمعيات نشطة'}`;advice.textContent=monthly?`قبل ما تصرف من المرتب، اعتبر ${fmt(monthly)} محجوزين للجمعية. لو أنت مؤسس، تابع مين دفع ومين لسه من زر إدارة الجمعية.`:'سجل الجمعية لو عندك عشان تدخل تلقائيًا في الالتزامات.';list.innerHTML=rows.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${x.role_mode==='founder'?'مؤسس':'مشترك'}</td><td>${fmt(x.monthly_amount)}</td><td>${x.total_members||'-'}</td><td>${x.current_turn||'-'}</td><td>${x.my_turn||'-'}</td><td>${x.status==='finished'?'منتهية':'نشطة'}</td><td><div class="actions"><button class="btn mini edit" onclick="edit('${x.id}')">تعديل</button>${x.role_mode==='founder'?`<button class="btn mini primary" onclick="openManager('${x.id}')">إدارة الجمعية</button>`:''}<button class="btn mini" onclick="finish('${x.id}')">إنهاء</button><button class="btn mini delete" onclick="deleteRow('gam3eyas','${x.id}')">حذف</button></div></td></tr>`).join('')||'<tr><td class="empty" colspan="8">لا توجد جمعية مسجلة</td></tr>'}
+function resetForm(){id.value='';setMode('subscriber');name.value='';monthly_amount.value='';total_members.value='';current_turn.value='';my_turn.value='';start_date.value='';status.value='active';note.value=''}
+function edit(rid){const x=rows.find(r=>r.id===rid); if(!x)return; id.value=x.id;setMode(x.role_mode||'subscriber');name.value=x.name;monthly_amount.value=x.monthly_amount;total_members.value=x.total_members||'';current_turn.value=x.current_turn||'';my_turn.value=x.my_turn||'';start_date.value=x.start_date||'';status.value=x.status||'active';note.value=x.note||'';scrollTo({top:0,behavior:'smooth'})}
+async function finish(rid){const {error}=await window.sb.from('gam3eyas').update({status:'finished'}).eq('id',rid); if(error)return toast(error.message,'bad');toast('تم إنهاء الجمعية');load()}
+async function save(){try{const payload={household_id:H.id,created_by:H.user.id,name:name.value||'جمعية شهرية',role_mode:role_mode.value,monthly_amount:num(monthly_amount.value),total_members:num(total_members.value)||null,current_turn:num(current_turn.value)||1,my_turn:num(my_turn.value)||null,start_date:start_date.value||null,status:status.value,note:note.value||''}; if(!payload.monthly_amount) throw new Error('اكتب قيمة القسط الشهري'); await saveGeneric('gam3eyas',payload,id.value); const savedId=id.value; resetForm(); await load(); if(payload.role_mode==='founder' && savedId) openManager(savedId);}catch(e){toast(e.message,'bad')}}
+async function openManager(gid){selectedGam3eya=rows.find(x=>x.id===gid); if(!selectedGam3eya)return; manager.classList.remove('hidden');manager_title.textContent='إدارة جمعية: '+selectedGam3eya.name; payment_month.value=payment_month.value||monthKey(); await loadManager(); setTimeout(()=>manager.scrollIntoView({behavior:'smooth'}),100)}
+function closeManager(){manager.classList.add('hidden');selectedGam3eya=null;gmembers=[];payments=[]}
+async function loadManager(){if(!selectedGam3eya)return; const [mRes,pRes]=await Promise.all([window.sb.from('gam3eya_members').select('*').eq('gam3eya_id',selectedGam3eya.id).order('turn_number',{ascending:true}),window.sb.from('gam3eya_payments').select('*').eq('gam3eya_id',selectedGam3eya.id).eq('payment_month',payment_month.value||monthKey())]); if(mRes.error)return toast(mRes.error.message,'bad'); if(pRes.error)return toast(pRes.error.message,'bad'); gmembers=mRes.data||[];payments=pRes.data||[];renderManager()}
+payment_month.addEventListener('change',loadManager);
+function paymentFor(mid){return payments.find(p=>p.member_id===mid)}
+function renderManager(){let q=(member_search.value||'').trim().toLowerCase();let f=pay_filter.value;let listRows=gmembers.filter(m=>!q||String(m.member_name).toLowerCase().includes(q)).filter(m=>{const paid=paymentFor(m.id)?.is_paid;return f==='all'||(f==='paid'&&paid)||(f==='unpaid'&&!paid)});const paidCount=gmembers.filter(m=>paymentFor(m.id)?.is_paid).length;const expected=gmembers.length*num(selectedGam3eya?.monthly_amount);const collected=paidCount*num(selectedGam3eya?.monthly_amount);manager_summary.textContent=`الأعضاء: ${gmembers.length}\nدفعوا هذا الشهر: ${paidCount}\nلم يدفعوا: ${Math.max(gmembers.length-paidCount,0)}\nالمتوقع: ${fmt(expected)}\nالمحصّل: ${fmt(collected)}\nالمتبقي في التحصيل: ${fmt(expected-collected)}`;members_list.innerHTML=listRows.map(m=>{const p=paymentFor(m.id);return `<tr><td>${escapeHtml(m.member_name)}<div class="muted">${escapeHtml(m.phone||'')}</div></td><td>${m.turn_number||'-'}</td><td>${p?.is_paid?'<span class="pill">دفع</span>':'<span class="pill warn">لم يدفع</span>'}</td><td>${p?.paid_at?new Date(p.paid_at).toLocaleDateString('ar-EG'):'-'}</td><td><div class="actions"><button class="btn mini ${p?.is_paid?'':'primary'}" onclick="togglePaid('${m.id}',${p?.is_paid?'false':'true'})">${p?.is_paid?'إلغاء الدفع':'تحديد دفع'}</button><button class="btn mini edit" onclick="editMember('${m.id}')">تعديل</button><button class="btn mini delete" onclick="deleteMember('${m.id}')">حذف</button></div></td></tr>`}).join('')||'<tr><td class="empty" colspan="5">لا توجد أسماء مطابقة</td></tr>'}
+function resetMemberForm(){gm_id.value='';gm_name.value='';gm_turn.value='';gm_phone.value='';gm_note.value=''}
+function editMember(mid){const m=gmembers.find(x=>x.id===mid); if(!m)return; gm_id.value=m.id;gm_name.value=m.member_name;gm_turn.value=m.turn_number||'';gm_phone.value=m.phone||'';gm_note.value=m.note||''}
+async function saveMember(){try{if(!selectedGam3eya)throw new Error('اختر جمعية أولًا'); if(!gm_name.value.trim())throw new Error('اكتب اسم العضو'); const payload={household_id:H.id,gam3eya_id:selectedGam3eya.id,member_name:gm_name.value.trim(),turn_number:num(gm_turn.value)||null,phone:gm_phone.value||'',note:gm_note.value||''}; await saveGeneric('gam3eya_members',payload,gm_id.value); resetMemberForm(); loadManager();}catch(e){toast(e.message,'bad')}}
+async function deleteMember(mid){if(!confirm('حذف العضو ومدفوعاته؟'))return; const {error}=await window.sb.from('gam3eya_members').delete().eq('id',mid); if(error)return toast(error.message,'bad');toast('تم حذف العضو');loadManager()}
+async function togglePaid(mid,isPaid){const payload={household_id:H.id,gam3eya_id:selectedGam3eya.id,member_id:mid,payment_month:payment_month.value||monthKey(),amount:num(selectedGam3eya.monthly_amount),is_paid:isPaid,paid_at:isPaid?new Date().toISOString():null}; const {error}=await window.sb.from('gam3eya_payments').upsert(payload,{onConflict:'gam3eya_id,member_id,payment_month'}); if(error)return toast(error.message,'bad');toast(isPaid?'تم تسجيل الدفع':'تم إلغاء الدفع');loadManager()}
+async function markAllPaid(){for(const m of gmembers){await window.sb.from('gam3eya_payments').upsert({household_id:H.id,gam3eya_id:selectedGam3eya.id,member_id:m.id,payment_month:payment_month.value||monthKey(),amount:num(selectedGam3eya.monthly_amount),is_paid:true,paid_at:new Date().toISOString()},{onConflict:'gam3eya_id,member_id,payment_month'});}toast('تم تحديد كل الأعضاء دفعوا');loadManager()}
+async function markAllUnpaid(){for(const m of gmembers){await window.sb.from('gam3eya_payments').upsert({household_id:H.id,gam3eya_id:selectedGam3eya.id,member_id:m.id,payment_month:payment_month.value||monthKey(),amount:num(selectedGam3eya.monthly_amount),is_paid:false,paid_at:null},{onConflict:'gam3eya_id,member_id,payment_month'});}toast('تم تحديد الكل لم يدفع');loadManager()}
+async function autoFillMembers(){if(!selectedGam3eya)return toast('اختر جمعية أولًا','bad'); const total=num(selectedGam3eya.total_members)||num(total_members.value)||0; if(!total)return toast('حدد عدد الأعضاء الأول','bad'); const existing=gmembers.length; for(let i=existing+1;i<=total;i++){await window.sb.from('gam3eya_members').insert({household_id:H.id,gam3eya_id:selectedGam3eya.id,member_name:`عضو ${i}`,turn_number:i});}toast('تم توليد الأعضاء المؤقتين');loadManager()}
+</script></body></html>

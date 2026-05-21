@@ -1,0 +1,39 @@
+<!doctype html><html lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masrofi Dashboard</title><link rel="stylesheet" href="css/style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><script src="js/config.js"></script><script src="js/app.js"></script>
+<main class="container page">
+  <div class="page-head"><div><h1 id="title">الرئيسية</h1><p class="muted">إدارة فعلية للمرتب، المصاريف، الالتزامات، الديون والمتبقي.</p></div><a class="btn primary" href="ai.html">🎙️ افتح المساعد الذكي</a></div>
+  <section class="smart-strip">
+    <div class="salary-box">
+      <h3>إعداد المرتب الشهري</h3>
+      <div class="inline-form">
+        <div><label>المرتب / الدخل الثابت</label><input id="monthly_salary" type="number" placeholder="مثال 15000"></div>
+        <div><label>يوم نزول المرتب</label><input id="salary_day" type="number" min="1" max="31" value="1"></div>
+        <div><label>هدف احتياطي لا تلمسه</label><input id="emergency_target" type="number" placeholder="مثال 2000"></div>
+        <button class="btn primary" onclick="saveSalary()">حفظ المرتب</button>
+      </div>
+      <p class="muted">المساعد هيخصم تلقائيًا المصاريف + الفواتير + الأقساط + الديون من المرتب.</p>
+    </div>
+    <div class="card top-line"><h3>قرار سريع</h3><div id="quickAdvice" class="result-box">جاري الحساب...</div></div>
+  </section>
+  <div class="grid action-grid" style="margin-bottom:14px"><a class="stat quick-card" href="smartbuy.html">هل أقدر أشتريها؟<b>قرار شراء</b></a><a class="stat quick-card" href="emergency.html">خطة الطوارئ<b>صندوق أمان</b></a><a class="stat quick-card" href="challenges.html">تحديات مالية<b>تحفيز</b></a><a class="stat quick-card" href="ai.html">كوتش مالي<b>اسألني</b></a></div>
+  <div class="grid">
+    <div class="stat">الدخل/المرتب<b id="income">0</b><div class="kpi-note">الأعلى بين المرتب والدخل المسجل</div></div>
+    <div class="stat">المصاريف<b id="expense">0</b><div class="kpi-note">مصروفات الشهر</div></div>
+    <div class="stat">الالتزامات<b id="commitments">0</b><div class="kpi-note">فواتير + أقساط + ديون عليك</div></div>
+    <div class="stat">المتبقي المتوقع<b id="remain">0</b><div class="progress"><span id="remainBar"></span></div></div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="stat">المتاح الآمن للصرف<b id="safe">0</b></div>
+    <div class="stat debt-card">ديون عليك<b id="iOwe">0</b><div class="kpi-note">سلف وديون واجبة السداد</div></div>
+    <div class="stat">فلوس ليك عند الناس<b id="owedMe">0</b></div>
+    <div class="stat gam3eya-card">الجمعيات الشهرية<b id="gam3eyaMonthly">0</b><div class="kpi-note">مضافة للالتزامات</div></div>
+  </div>
+  <section class="grid-2" style="margin-top:14px">
+    <div class="card top-line"><h3>خطة التحويش الذكية</h3><div id="savingPreview" class="result-box small-result">جاري بناء الخطة...</div><div class="actions"><a class="btn primary" href="ai.html">ناقش الخطة مع المساعد</a></div></div>
+    <div class="card top-line"><h3>الجمعية</h3><div id="gam3eyaPreview" class="result-box small-result">لا توجد جمعية مسجلة.</div><div class="actions"><a class="btn secondary" href="gam3eya.html">إدارة الجمعية</a></div></div>
+  </section>
+  <section class="grid-2" style="margin-top:14px"><div class="card top-line"><h3>الصحة المالية</h3><div id="healthDash">جاري الحساب...</div><div class="actions"><a class="btn secondary" href="whatif.html">جرّب ماذا لو؟</a><a class="btn secondary" href="goals.html">الأهداف</a></div></div><div class="card top-line"><h3>أهداف نشطة</h3><div id="goalsDash" class="result-box small-result">جاري التحميل...</div></div></section><section class="grid-2" style="margin-top:14px"><div class="card"><h3>آخر العمليات</h3><table><tbody id="lastTx"></tbody></table></div><div class="card"><h3>أعلى بنود الصرف</h3><table><tbody id="cats"></tbody></table></div></section>
+</main><script>
+mountNav(); let H; load();
+async function load(){H=await getHousehold(); if(!H) return; title.textContent='الرئيسية - '+H.name; const s=await financeSummary(H); monthly_salary.value=s.settings.monthly_salary||''; salary_day.value=s.settings.salary_day||1; emergency_target.value=s.settings.emergency_target||''; income.textContent=fmt(s.income); expense.textContent=fmt(s.expenses); commitments.textContent=fmt(s.commitments); remain.textContent=fmt(s.remaining); remain.className=s.remaining<0?'money-negative':'money-positive'; safe.textContent=fmt(s.safeToSpend); iOwe.textContent=fmt(s.iOwe); owedMe.textContent=fmt(s.owedMe); gam3eyaMonthly.textContent=fmt(s.gam3eyaMonthly||0); savingPreview.textContent=await savingPlan(H); gam3eyaPreview.textContent=(s.gam3eyas||[]).filter(x=>x.status!=='finished').map(x=>`${x.name}: ${fmt(x.monthly_amount)} شهريًا - الدور ${x.current_turn||1}/${x.total_members||0}`).join('\n') || 'لا توجد جمعية مسجلة. تقدر تضيف جمعية شهرية من هنا.'; const pct=s.income?Math.max(0,Math.min(100,(s.remaining/s.income)*100)):0; remainBar.style.width=pct+'%'; quickAdvice.textContent=(await analyzeMonth(H)).split('النصيحة: ')[1] || 'سجل مرتبك ومصاريفك عشان يظهر التحليل.'; const hs=await healthScore(H); healthDash.innerHTML=`<div class="health-ring" style="--p:${hs.score}"><span>${hs.score}</span></div><p style="text-align:center">${hs.label}</p><p class="muted">- ${hs.tips.join('<br>- ')}</p>`; const gr=await window.sb.from('goals').select('*').eq('household_id',H.id).eq('status','active').limit(5); goalsDash.textContent=(gr.data||[]).map(g=>`${g.title}: ${fmt(g.saved_amount)} / ${fmt(g.target_amount)}`).join('\n') || 'لا توجد أهداف. أضف هدف من صفحة الأهداف.'; lastTx.innerHTML=(s.tx||[]).slice(0,7).map(x=>`<tr><td>${x.type==='income'?'دخل':'مصروف'}</td><td>${escapeHtml(x.category)}</td><td>${fmt(x.amount)}</td><td>${x.date}</td></tr>`).join('')||'<tr><td class="empty">لا توجد عمليات</td></tr>'; cats.innerHTML=s.topCats.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td>${fmt(v)}</td></tr>`).join('')||'<tr><td class="empty">لا توجد بنود صرف</td></tr>';}
+async function saveSalary(){try{await saveSettings(H,{monthly_salary:monthly_salary.value,salary_day:salary_day.value,emergency_target:emergency_target.value}); load();}catch(e){toast(e.message,'bad')}}
+</script></body></html>
