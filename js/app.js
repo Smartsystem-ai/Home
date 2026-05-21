@@ -52,7 +52,9 @@ async function getHousehold(){
    const {data,error}=await window.sb.rpc('ensure_current_household');
    if(!error && data){
      const row = Array.isArray(data) ? data[0] : data;
-     return {id:row.household_id, role:row.role||'owner', member_id:row.member_id||null, name:row.household_name||'بيتي', user:session.user};
+     const H = {id:row.household_id, role:row.role||'owner', member_id:row.member_id||null, name:row.household_name||'بيتي', user:session.user};
+     await window.sb.from('household_settings').upsert({household_id:H.id},{onConflict:'household_id'});
+     return H;
    }
    if(error) console.warn('ensure_current_household RPC:', error.message);
  }catch(e){ console.warn('ensure_current_household not available yet:', e.message); }
