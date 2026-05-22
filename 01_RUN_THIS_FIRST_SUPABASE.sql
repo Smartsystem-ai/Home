@@ -294,6 +294,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
 AS $$
+#variable_conflict use_column
 DECLARE
   v_uid uuid := auth.uid();
   v_email text;
@@ -359,6 +360,10 @@ BEGIN
       can_manage_members = true;
   END IF;
 
+  INSERT INTO public.household_settings(household_id)
+  VALUES (v_household_id)
+  ON CONFLICT (household_id) DO NOTHING;
+
   RETURN QUERY
   SELECT hu.household_id, h.name, hu.role, hu.member_id
   FROM public.household_users hu
@@ -377,6 +382,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
 AS $$
+#variable_conflict use_column
 DECLARE
   v_household_id uuid;
   v_full_name text;
@@ -452,18 +458,18 @@ CREATE POLICY households_delete ON public.households
 FOR DELETE USING (owner_id = auth.uid());
 
 CREATE POLICY household_users_select ON public.household_users
-FOR SELECT USING (user_id = auth.uid() OR public.is_household_admin(household_id));
+FOR SELECT USING (public.household_users.user_id = auth.uid() OR public.is_household_admin(public.household_users.household_id));
 CREATE POLICY household_users_insert ON public.household_users
 FOR INSERT WITH CHECK (
-  user_id = auth.uid()
-  OR public.is_household_admin(household_id)
-  OR EXISTS (SELECT 1 FROM public.households h WHERE h.id = household_id AND h.owner_id = auth.uid())
+  public.household_users.user_id = auth.uid()
+  OR public.is_household_admin(public.household_users.household_id)
+  OR EXISTS (SELECT 1 FROM public.households h WHERE h.id = public.household_users.household_id AND h.owner_id = auth.uid())
 );
 CREATE POLICY household_users_update ON public.household_users
-FOR UPDATE USING (public.is_household_admin(household_id))
-WITH CHECK (public.is_household_admin(household_id));
+FOR UPDATE USING (public.is_household_admin(public.household_users.household_id))
+WITH CHECK (public.is_household_admin(public.household_users.household_id));
 CREATE POLICY household_users_delete ON public.household_users
-FOR DELETE USING (public.is_household_admin(household_id));
+FOR DELETE USING (public.is_household_admin(public.household_users.household_id));
 
 CREATE POLICY household_members_all ON public.household_members
 FOR ALL USING (public.is_household_member(household_id))

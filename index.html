@@ -11,25 +11,29 @@
 const msg=document.getElementById('msg');
 function setMsg(t,bad=false){msg.textContent=t||'';msg.className='status '+(bad?'bad':'')}
 function showAuth(mode){loginBox.classList.toggle('hidden',mode!=='login');regBox.classList.toggle('hidden',mode!=='reg');loginTab.classList.toggle('active',mode==='login');regTab.classList.toggle('active',mode==='reg');setMsg('')}
-function configured(){ if(!window.sb){setMsg('راجع js/config.js: رابط Supabase لازم يكون Project URL بدون /rest/v1 ومعاه anon key.',true);return false} return true; }
+function configured(){ if(!window.sb){const issues=(window.masrofiConfig?.issues||[]).join(' ');setMsg('راجع js/config.js: رابط Supabase لازم يكون Project URL بدون /rest/v1 ومعاه anon key.'+(issues?' '+issues:''),true);return false} return true; }
+function normalizeRpcRow(data){return Array.isArray(data)?data[0]:data}
+function nextPage(){const p=new URLSearchParams(location.search).get('returnTo')||'dashboard.html';return /^[a-z0-9_-]+\.html$/i.test(p)?p:'dashboard.html'}
 async function ensureHousehold(fullName='مستخدم', home='بيتي'){
   const {data:{session}}=await window.sb.auth.getSession();
   if(!session) return false;
   try{
     const {data,error}=await window.sb.rpc('ensure_current_household');
     if(error) throw error;
-    return !!(data && data.length);
+    const row=normalizeRpcRow(data);
+    if(!row || !row.household_id) throw new Error('ensure_current_household لم يرجع بيت للمستخدم.');
+    return true;
   }catch(e){
-    setMsg('تم الدخول لكن ملف SQL المحدث لم يشتغل أو RLS مانع إنشاء البيت: '+e.message,true);
+    setMsg('تم الدخول لكن قاعدة البيانات مش متظبطة: '+e.message+'. شغّل ملف supabase/02_SAFE_AUTH_SESSION_FIX.sql أو ملف البناء الكامل لو دي قاعدة جديدة.',true);
     return false;
   }
 }
-window.addEventListener('load',async()=>{ if(!configured()) return; const {data:{session}}=await window.sb.auth.getSession(); if(session){ await ensureHousehold(); location.href='dashboard.html'; }});
+window.addEventListener('load',async()=>{ if(!configured()) return; const {data:{session}}=await window.sb.auth.getSession(); if(session){ const ok=await ensureHousehold(); if(ok) location.href=nextPage(); }});
 async function login(){
  if(!configured())return; setMsg('جاري الدخول...'); loginBtn.disabled=true;
  const {error}=await window.sb.auth.signInWithPassword({email:loginEmail.value.trim(),password:loginPass.value});
  loginBtn.disabled=false; if(error){setMsg('بيانات الدخول غير صحيحة أو الإيميل غير مؤكد. لو لسه عامل الحساب اقفل Confirm email من Supabase أو أكد الإيميل.',true);return}
- const ok=await ensureHousehold(); if(ok) location.href='dashboard.html';
+ const ok=await ensureHousehold(); if(ok) location.href=nextPage();
 }
 async function register(){
  if(!configured())return; setMsg('جاري التسجيل...'); regBtn.disabled=true;
@@ -40,6 +44,6 @@ async function register(){
  const {data:{session}}=await window.sb.auth.getSession();
  if(!session){regBtn.disabled=false;setMsg('تم إنشاء الحساب. لو Confirm email شغال لازم تأكد الإيميل، أو اقفله من Supabase Authentication > Providers > Email.',false);showAuth('login');return}
  const ok=await ensureHousehold(fullName,home); if(!ok){regBtn.disabled=false;return}
- location.href='dashboard.html'
+ location.href=nextPage()
 }
 </script></body></html>

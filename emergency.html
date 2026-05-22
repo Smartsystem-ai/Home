@@ -2,7 +2,7 @@
 <main class="container page">
 <div class="page-head"><div><h1>خطة الطوارئ</h1><p class="muted">صندوق طوارئ تدريجي يحميك من العجز والديون المفاجئة.</p></div><a class="btn secondary" href="dashboard.html">الرئيسية</a></div>
 <section class="grid-2"><div class="card top-line"><h3>إعداد الصندوق</h3><label>هدف الطوارئ النهائي</label><input id="target" type="number" placeholder="مثال 30000"><label>أقدر أحوش شهريًا</label><input id="monthly" type="number" placeholder="مثال 2000"><div class="actions"><button class="btn primary" onclick="calcEmergency()">احسب الخطة</button><button class="btn secondary" onclick="saveEmergency()">حفظ كهدف احتياطي</button></div></div><div class="card top-line"><h3>الخطة</h3><div id="out" class="result-box">حدد هدف الطوارئ.</div></div></section></main>
-<script>mountNav(); let H; load(); async function load(){H=await getHousehold(); const s=await getSettings(H); target.value=s.emergency_target||'';} async function calcEmergency(){const t=num(target.value); let m=num(monthly.value); const s=await financeSummary(H); if(!t){out.textContent='اكتب هدف الطوارئ النهائي.';return} if(!m) m=Math.max(0,Math.floor(s.remaining*0.25)); const months=Math.ceil(t/Math.max(m,1)); out.textContent=`هدف الطوارئ: ${fmt(t)}
+<script>mountNav(); let H; load(); async function load(){H=await getHousehold(); if(!H) return; const s=await getSettings(H); target.value=s.emergency_target||'';} async function calcEmergency(){const t=num(target.value); let m=num(monthly.value); const s=await financeSummary(H); if(!t){out.textContent='اكتب هدف الطوارئ النهائي.';return} if(!m) m=Math.max(0,Math.floor(s.remaining*0.25)); const months=Math.ceil(t/Math.max(m,1)); out.textContent=`هدف الطوارئ: ${fmt(t)}
 المبلغ الشهري المقترح: ${fmt(m)}
 المدة المتوقعة: ${months} شهر
 

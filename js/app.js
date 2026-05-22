@@ -26,22 +26,58 @@ function toast(message,type='ok'){
   if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}
   t.className='toast show '+type;t.textContent=message;setTimeout(()=>t.classList.remove('show'),3000);
 }
+function showBlockingError(title, details=''){
+  let box=document.querySelector('.app-blocking-error');
+  if(!box){
+    box=document.createElement('div');
+    box.className='config-error app-blocking-error';
+    document.body.prepend(box);
+  }
+  box.innerHTML=`<strong>${escapeHtml(title)}</strong>${details?`<small>${escapeHtml(details)}</small>`:''}`;
+}
 function ensureConfig(){
   if(!window.sb){
-    const msg='لازم تضيف SUPABASE_URL و SUPABASE_ANON_KEY في js/config.js';
-    if(!document.querySelector('.config-error')){const box=document.createElement('div');box.className='config-error';box.textContent=msg;document.body.prepend(box)}
+    const issues=(window.masrofiConfig?.issues||[]).join(' ');
+    const msg='لازم تضبط SUPABASE_URL و SUPABASE_ANON_KEY في js/config.js';
+    if(!document.querySelector('.config-error')){const box=document.createElement('div');box.className='config-error';box.textContent=issues?`${msg}: ${issues}`:msg;document.body.prepend(box)}
     return false;
   }
   return true;
 }
 async function getSession(){
   if(!ensureConfig()) return null;
-  const {data:{session}, error}=await window.sb.auth.getSession();
-  if(error) console.warn('getSession:', error.message);
-  return session || null;
+  try{
+    const {data:{session}, error}=await window.sb.auth.getSession();
+    if(error) console.warn('getSession:', error.message);
+    return session || null;
+  }catch(e){
+    console.warn('getSession failed:', e.message);
+    return null;
+  }
 }
-async function requireAuth(){ const session=await getSession(); if(!session){ location.href='index.html'; return null;} return session; }
+function redirectToLogin(){
+  const loginUrl = new URL('index.html', location.href);
+  const currentPage = location.pathname.split('/').pop();
+  if(currentPage && currentPage !== 'index.html') loginUrl.searchParams.set('returnTo', currentPage);
+  location.replace(loginUrl.href);
+}
+async function requireAuth(){ const session=await getSession(); if(!session){ redirectToLogin(); return null;} return session; }
 async function logout(){ if(!confirm('هل تريد تسجيل الخروج؟')) return; if(window.sb) await window.sb.auth.signOut(); location.href='index.html'; }
+function normalizeHouseholdRow(data){
+  return Array.isArray(data) ? data[0] : data;
+}
+async function ensureSettingsRow(householdId){
+  if(!householdId) return;
+  const {error}=await window.sb.from('household_settings').upsert({household_id:householdId},{onConflict:'household_id'});
+  if(error) console.warn('ensureSettingsRow:', error.message);
+}
+function dataSetupError(scope,error){
+  const message = error?.message || String(error || 'Unknown database error');
+  console.error(scope, error);
+  showBlockingError('مشكلة في إعدادات قاعدة البيانات', `${scope}: ${message}`);
+  toast('فيه مشكلة في إعدادات قاعدة البيانات، مش في تسجيل الدخول. راجع ملف SQL.', 'bad');
+  throw error instanceof Error ? error : new Error(message);
+}
 async function getHousehold(){
  const session=await requireAuth();
  if(!session) return null;
@@ -51,9 +87,10 @@ async function getHousehold(){
  try{
    const {data,error}=await window.sb.rpc('ensure_current_household');
    if(!error && data){
-     const row = Array.isArray(data) ? data[0] : data;
+     const row = normalizeHouseholdRow(data);
+     if(!row || !row.household_id) throw new Error('ensure_current_household returned no household row.');
      const H = {id:row.household_id, role:row.role||'owner', member_id:row.member_id||null, name:row.household_name||'بيتي', user:session.user};
-     await window.sb.from('household_settings').upsert({household_id:H.id},{onConflict:'household_id'});
+     await ensureSettingsRow(H.id);
      return H;
    }
    if(error) console.warn('ensure_current_household RPC:', error.message);
@@ -61,7 +98,7 @@ async function getHousehold(){
 
  // fallback لو ملف SQL المحدث لم يتشغل بعد
  let {data,error}=await window.sb.from('household_users').select('household_id, role, member_id, households(id,name,owner_id)').eq('user_id',uid).eq('status','active').limit(1).maybeSingle();
- if(error){ console.error(error); toast('مشكلة في تحميل بيانات البيت: '+error.message,'bad'); return null; }
+ if(error) return dataSetupError('تحميل بيانات البيت', error);
  if(!data){
    const meta=session.user.user_metadata||{};
    const homeName=meta.house_name||'بيتي';
@@ -71,11 +108,12 @@ async function getHousehold(){
    h=existing.data;
    if(!h){
      const created=await window.sb.from('households').insert({owner_id:uid,name:homeName}).select('id,name,owner_id').single();
-     if(created.error){ toast('تم الدخول لكن لم يتم إنشاء البيت: '+created.error.message,'bad'); return null; }
+     if(created.error) return dataSetupError('إنشاء البيت', created.error);
      h=created.data;
    }
    const link=await window.sb.from('household_users').insert({household_id:h.id,user_id:uid,role:'owner',can_add_expenses:true,can_add_commitments:true,can_view_income:true,can_view_reports:true,can_manage_members:true,status:'active'});
-   if(link.error && !String(link.error.message||'').includes('duplicate')){ toast('تم الدخول لكن لم يتم ربط البيت: '+link.error.message,'bad'); return null; }
+   if(link.error && !String(link.error.message||'').includes('duplicate')) return dataSetupError('ربط البيت بالمستخدم', link.error);
+   await ensureSettingsRow(h.id);
    data={household_id:h.id,role:'owner',member_id:null,households:h};
  }
  return {id:data.household_id, role:data.role, member_id:data.member_id, name:data.households?.name||'بيتي', user:session.user};
@@ -89,7 +127,8 @@ async function addNotification(household_id,user_id,title,body,type='system'){
 }
 async function getSettings(H){
   const {data,error}=await window.sb.from('household_settings').select('*').eq('household_id',H.id).maybeSingle();
-  if(error && error.code !== 'PGRST116') console.warn(error.message);
+  if(error && error.code !== 'PGRST116') return dataSetupError('تحميل إعدادات البيت', error);
+  if(!data) await ensureSettingsRow(H.id);
   return data || {household_id:H.id, user_id:H.user.id, monthly_salary:0, salary_day:1, emergency_target:0};
 }
 async function saveSettings(H, payload){
@@ -100,14 +139,20 @@ async function saveSettings(H, payload){
 }
 async function financeSummary(H){
   const start = monthKey() + '-01';
-  const [settingsRes, txRes, billsRes, instRes, debtsRes, gamRes] = await Promise.all([
+  const requests = [
     window.sb.from('household_settings').select('*').eq('household_id',H.id).maybeSingle(),
     window.sb.from('transactions').select('*').eq('household_id',H.id).gte('date',start).eq('status','approved'),
     window.sb.from('bills').select('*').eq('household_id',H.id),
     window.sb.from('installments').select('*').eq('household_id',H.id),
     window.sb.from('debts').select('*').eq('household_id',H.id),
     window.sb.from('gam3eyas').select('*').eq('household_id',H.id)
-  ]);
+  ];
+  const [settingsRes, txRes, billsRes, instRes, debtsRes, gamRes] = await Promise.all(requests);
+  const names=['household_settings','transactions','bills','installments','debts','gam3eyas'];
+  [settingsRes, txRes, billsRes, instRes, debtsRes, gamRes].forEach((res,i)=>{
+    if(res.error && res.error.code !== 'PGRST116') dataSetupError(`تحميل جدول ${names[i]}`, res.error);
+  });
+  if(!settingsRes.data) await ensureSettingsRow(H.id);
   const settings=settingsRes.data || {household_id:H.id,user_id:H.user.id,monthly_salary:0,salary_day:1,emergency_target:0};
   const tx=txRes.data||[], bills=billsRes.data||[], inst=instRes.data||[], debts=debtsRes.data||[], gam3eyas=gamRes?.data||[];
   const actualIncome=tx.filter(x=>x.type==='income').reduce((a,b)=>a+num(b.amount),0);

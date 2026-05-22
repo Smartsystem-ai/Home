@@ -1,26 +1,19 @@
-# Masrofi Smart — Full Old UI Rebuilt
+# Masrofi Smart
 
-هذه نسخة كاملة بنفس واجهة المستخدم القديمة، مع إصلاحات صارمة للـ Supabase/Auth/RLS وحفظ الجلسة والمرتب.
+تطبيق Static HTML/JS مربوط بـ Supabase.
 
-## التشغيل
+## مهم قبل التشغيل
 
-1. افتح Supabase > SQL Editor.
-2. شغّل ملف واحد فقط:
+1. افتح `js/config.js` وتأكد أن:
+   - `SUPABASE_URL` هو Project URL فقط، بدون `/rest/v1`.
+   - `SUPABASE_ANON_KEY` من نفس مشروع Supabase.
+2. لو عندك قاعدة بيانات موجودة وفيها داتا، شغّل:
+   `supabase/02_SAFE_AUTH_SESSION_FIX.sql`
+3. لو قاعدة البيانات جديدة وفاضية فقط، شغّل:
    `01_RUN_THIS_FIRST_SUPABASE.sql`
-3. ارفع كل ملفات المشروع على GitHub Pages أو أي استضافة Static.
-4. افتح الموقع وسجّل دخول.
 
-## مهم
+## ملاحظات
 
-- لا يوجد أكثر من ملف SQL مطلوب؛ شغّل `01_RUN_THIS_FIRST_SUPABASE.sql` فقط.
-- ملف `js/config.js` يحتوي على Supabase URL و anon key القديمين بالفعل.
-- لا تشغّل أي Reset يمسح الداتا.
-
-## تم إصلاح
-
-- حفظ Session بعد Refresh.
-- مشكلة user.id عبر الاعتماد على `session.user.id` فقط.
-- RLS و `ensure_current_household`.
-- حفظ المرتب الشهري في `household_settings`.
-- حساب المتبقي وقرار الشراء.
-- الجداول الأساسية: المصاريف، الفواتير، الأقساط، الديون، الجمعية، الأهداف، الشات، الإشعارات.
+- ملف `02_SAFE_AUTH_SESSION_FIX.sql` لا يمسح الداتا. يصلح دوال الـ Auth/RLS ويضمن وجود `household_settings`.
+- ملف `01_RUN_THIS_FIRST_SUPABASE.sql` يعيد بناء جداول التطبيق من الصفر، فلا تشغله على داتا مهمة إلا بعد Backup.
+- التطبيق يحتاج تشغيله من `http://` أو `https://` حتى يتم حفظ الجلسة في `localStorage` بشكل ثابت.
