@@ -84,6 +84,7 @@ async function getHousehold(){
  const uid=session.user.id;
 
  // الطريقة الصارمة: دالة آمنة داخل Supabase تنشئ/ترجع البيت بدون مشاكل RLS
+ let rpcProblem = null;
  try{
    const {data,error}=await window.sb.rpc('ensure_current_household');
    if(!error && data){
@@ -93,13 +94,14 @@ async function getHousehold(){
      await ensureSettingsRow(H.id);
      return H;
    }
-   if(error) console.warn('ensure_current_household RPC:', error.message);
- }catch(e){ console.warn('ensure_current_household not available yet:', e.message); }
+   if(error){ rpcProblem = error; console.warn('ensure_current_household RPC:', error.message); }
+ }catch(e){ rpcProblem = e; console.warn('ensure_current_household not available yet:', e.message); }
 
  // fallback لو ملف SQL المحدث لم يتشغل بعد
  let {data,error}=await window.sb.from('household_users').select('household_id, role, member_id, households(id,name,owner_id)').eq('user_id',uid).eq('status','active').limit(1).maybeSingle();
  if(error) return dataSetupError('تحميل بيانات البيت', error);
  if(!data){
+   if(rpcProblem) return dataSetupError('إنشاء البيت عبر ensure_current_household', rpcProblem);
    const meta=session.user.user_metadata||{};
    const homeName=meta.house_name||'بيتي';
    let h=null;
